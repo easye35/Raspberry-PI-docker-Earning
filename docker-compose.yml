@@ -17,7 +17,7 @@ services:
     command: >
       -tou-accept
       -email ${HONEYGAIN_EMAIL}
-      -password ${HONEYGAIN_PASSWORD}
+      -pass ${HONEYGAIN_PASSWORD}
       -device ${HONEYGAIN_DEVICE}
     environment:
       - TZ=${TZ}
