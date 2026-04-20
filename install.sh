@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 echo "======================================="
 echo "        EarnBox Full Installer"
@@ -38,7 +39,6 @@ echo ""
 echo "Saving credentials..."
 
 # --- WRITE .env FILE ---
-
 cat <<EOF > .env
 HONEYGAIN_EMAIL="$HONEYGAIN_EMAIL"
 HONEYGAIN_PASSWORD="$HONEYGAIN_PASSWORD"
@@ -57,25 +57,50 @@ EOF
 echo ".env created successfully."
 echo ""
 
-# --- DOCKER INSTALL CHECK ---
-if ! command -v docker &> /dev/null
-then
+# ---------------------------------------------------------
+# Install Docker
+# ---------------------------------------------------------
+if ! command -v docker &> /dev/null; then
     echo "Docker not found. Installing Docker..."
     curl -fsSL https://get.docker.com | sh
     sudo usermod -aG docker $USER
     echo "Docker installed."
 fi
 
-if ! command -v docker-compose &> /dev/null
-then
-    echo "docker-compose not found. Installing..."
-    sudo apt-get install -y docker-compose
+# ---------------------------------------------------------
+# Install docker-compose plugin
+# ---------------------------------------------------------
+if ! docker compose version &> /dev/null; then
+    echo "Installing docker-compose plugin..."
+    sudo apt update -y
+    sudo apt install -y docker-compose-plugin
 fi
 
+# ---------------------------------------------------------
+# Install Node.js (backend requires it)
+# ---------------------------------------------------------
+if ! command -v node &> /dev/null; then
+    echo "Installing Node.js 18..."
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    sudo apt install -y nodejs
+fi
+
+# ---------------------------------------------------------
+# Enable cgroup memory (needed for RAM stats)
+# ---------------------------------------------------------
+echo "Enabling cgroup memory..."
+if ! grep -q "cgroup_enable=memory" /boot/firmware/cmdline.txt 2>/dev/null; then
+    sudo sed -i 's/$/ cgroup_enable=memory cgroup_memory=1/' /boot/firmware/cmdline.txt 2>/dev/null || \
+    sudo sed -i 's/$/ cgroup_enable=memory cgroup_memory=1/' /boot/cmdline.txt
+    echo "cgroups enabled. Reboot recommended."
+fi
+
+# ---------------------------------------------------------
+# Build & Start Docker Stack
+# ---------------------------------------------------------
 echo ""
 echo "Building containers..."
-
-# --- BUILD & START STACK ---
+docker compose down || true
 docker compose build --no-cache
 docker compose up -d
 
